@@ -4,21 +4,12 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// A modern, elegant loading screen.
-let cachedHtml = `<!DOCTYPE html><html><head><title>Study Smarterz</title><style>
-:root { --primary-color: #3b82f6; --bg-color: #f8fafc; --text-color: #334155; }
-body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: var(--bg-color); color: var(--text-color); }
-.loader { width: 60px; height: 60px; border-radius: 50%; display: inline-block; position: relative; border: 3px solid; border-color: var(--primary-color) var(--primary-color) transparent transparent; box-sizing: border-box; animation: rotation 1s linear infinite; }
-.loader::after, .loader::before { content: ''; box-sizing: border-box; position: absolute; left: 0; right: 0; top: 0; bottom: 0; margin: auto; border: 3px solid; border-color: transparent transparent #60a5fa #60a5fa; width: 50px; height: 50px; border-radius: 50%; box-sizing: border-box; animation: rotationBack 0.5s linear infinite; transform-origin: center center; }
-.loader::before { width: 40px; height: 40px; border-color: var(--primary-color) var(--primary-color) transparent transparent; animation: rotation 1.5s linear infinite; }
-@keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@keyframes rotationBack { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
-p { margin-top: 24px; font-size: 1.125rem; letter-spacing: 0.5px; }
-</style></head><body><div class="loader"></div><p>Loading Live Classes...</p></body></html>`;
+// This will hold the complete, pre-generated HTML page.
+let cachedHtml = '<!DOCTYPE html><html><head><title>Study Smarterz</title><style>body{display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;} .spinner {width: 64px;height: 64px;border-radius: 50%;position: relative;background: conic-gradient(from 0deg, transparent, #fff);animation: spin 1s linear infinite;} .spinner::before {content: "";position: absolute;top: 8px;left: 8px;right: 8px;bottom: 8px;border-radius: 50%;background: transparent;border: 3px solid rgba(255,255,255,0.3);} @keyframes spin {to {transform: rotate(360deg);}}</style></head><body><div class="spinner"></div><p style="margin-left: 24px; font-size: 1.25rem; font-weight: 500;">Loading live classes, please wait...</p></body></html>';
 
 /**
  * UTILITY FUNCTIONS
- * (No changes here, functionality is the same)
+ * These are helper functions moved from the original HTML file.
  */
 const textReplacer = (text) => {
     if (typeof text !== 'string') return text;
@@ -44,10 +35,9 @@ const fetchApiData = async (endpoint) => {
     }
 };
 
-
 /**
  * HTML RENDERING FUNCTIONS
- * (Major design updates here)
+ * These functions build the dynamic parts of the HTML.
  */
 const renderLectureCards = (data) => {
     if (!data || data.length === 0) {
@@ -64,12 +54,12 @@ const renderLectureCards = (data) => {
                 const imageUrl = new URL(item.image);
                 if (imageUrl.hostname.endsWith('cloudfront.net')) {
                     isImageValid = true;
-                    imageHtml = `<img src="${item.image}" alt="${title}" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML = \`<div class='h-48 w-full bg-slate-100 flex flex-col items-center justify-center p-4 text-center text-slate-500'><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg><span class="font-semibold">${title}</span></div>\`;">`;
+                    imageHtml = `<img src="${item.image}" alt="${title}" class="h-48 w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML = '<div class=\'h-48 w-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4 text-center font-semibold text-slate-600\'>${title}</div>';">`;
                 }
             } catch (e) { /* Invalid URL */ }
         }
         if (!isImageValid) {
-            imageHtml = `<div class="h-48 w-full bg-slate-100 flex flex-col items-center justify-center p-4 text-center text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg><span class="font-semibold">${title}</span></div>`;
+            imageHtml = `<div class="h-48 w-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4 text-center font-semibold text-slate-600">${title}</div>`;
         }
 
         let finalLink = null;
@@ -87,34 +77,43 @@ const renderLectureCards = (data) => {
         }
 
         const cardContent = `
-            <div class="bg-white rounded-xl shadow-md overflow-hidden flex flex-col h-full relative group lecture-card transition-all duration-300 hover:shadow-xl hover:-translate-y-1" data-batch="${item.batch}">
-                <div class="overflow-hidden">
-                   ${imageHtml}
-                </div>
-                <div class="p-5 flex flex-col flex-grow">
-                    <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full z-10">${batch}</span>
-                    <h3 class="text-base font-bold text-slate-800 flex-grow leading-snug">${title}</h3>
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col h-full relative group lecture-card transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl" data-batch="${item.batch}">
+                <span class="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10 shadow-lg">${batch}</span>
+                <div class="overflow-hidden rounded-t-2xl">${imageHtml}</div>
+                <div class="p-6 flex flex-col flex-grow">
+                    <h3 class="text-lg font-bold text-slate-800 flex-grow leading-tight group-hover:text-blue-600 transition-colors duration-300">${title}</h3>
+                    <div class="mt-4 flex items-center text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <span class="text-sm">Watch Now</span>
+                        <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
                 </div>
             </div>
         `;
 
         return finalLink
             ? `<a href="${finalLink}" target="_blank" rel="noopener noreferrer" class="block">${cardContent}</a>`
-            : `<div class="block">${cardContent}</div>`;
+            : `<div>${cardContent}</div>`;
     }).join('');
 };
 
 const renderNotifications = (notifications) => {
     if (!notifications || notifications.length === 0) {
-        return `<p class="text-slate-500 text-center py-10">No new notifications.</p>`;
+        return `<div class="text-center py-12">
+            <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+            </svg>
+            <p class="text-slate-500 font-medium">No new notifications</p>
+        </div>`;
     }
     return notifications.map(notif => {
         const title = textReplacer(notif.title);
         const message = textReplacer(notif.message);
         return `
-            <div class="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors duration-200">
-                <p class="font-semibold text-slate-900">${title}</p>
-                <p class="text-sm text-slate-600 mt-1">${message}</p>
+            <div class="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 hover:shadow-md transition-shadow duration-300">
+                <p class="font-bold text-slate-800 mb-1">${title}</p>
+                <p class="text-sm text-slate-600 leading-relaxed">${message}</p>
             </div>
         `;
     }).join('');
@@ -130,7 +129,7 @@ const renderBatchOptions = (live, up, completed) => {
 
 /**
  * MAIN PAGE TEMPLATE
- * (Completely new design and structure)
+ * This function generates the entire HTML page with the fetched data.
  */
 const buildFullHtmlPage = (live, up, completed, notifications) => {
     const liveCards = renderLectureCards(live);
@@ -147,92 +146,221 @@ const buildFullHtmlPage = (live, up, completed, notifications) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Study Smarterz - Live Classes</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E7FMZ2D4HH"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-E7FMZ2D4HH');
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #3b82f6;
-            --primary-color-hover: #2563eb;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f8fafc;
-            background-image: radial-gradient(circle at top, #f1f5f9, transparent 40%);
+            font-family: 'Inter', 'Poppins', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
         }
         ::-webkit-scrollbar { width: 8px; } 
-        ::-webkit-scrollbar-track { background: #e2e8f0; } 
-        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        .notification-panel { transition: transform 0.3s ease-in-out; }
-        #app-container { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 4px; } 
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+        
+        .tab-active { 
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        .tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+        }
+        .tab-btn:not(.tab-active):hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .notification-panel { 
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .pulse-glow {
+            animation: pulseGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulseGlow {
+            from { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+            to { box-shadow: 0 0 30px rgba(139, 92, 246, 0.6); }
+        }
+        
+        .dropdown-modern {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-hover-glow:hover {
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15), 0 0 30px rgba(59, 130, 246, 0.2);
+        }
     </style>
 </head>
 <body class="text-slate-800">
-    <script>if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) { console.error("Frame-busting failed:", e); } }</script>
+    <!-- Frame Buster Script -->
+    <script>
+        if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) { console.error("Frame-busting failed:", e); } }
+    </script>
 
     <div id="app-container" class="min-h-screen">
-        <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-slate-200">
+        <header class="glass-effect sticky top-0 z-30 border-b-0">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between h-20">
-                    <div class="flex-shrink-0"><h1 class="text-3xl font-extrabold text-slate-900">Study <span class="text-blue-600">Smarterz</span></h1></div>
+                    <div class="flex-shrink-0 floating-animation">
+                        <h1 class="text-3xl font-black gradient-text">Study Smarterz</h1>
+                        <p class="text-white/70 text-sm font-medium -mt-1">Live Learning Platform</p>
+                    </div>
                     <div class="relative">
-                        <button id="notification-btn" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                        <button id="notification-btn" class="p-3 rounded-xl glass-effect text-white hover:bg-white/20 transition-all duration-300 pulse-glow">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
                         </button>
                     </div>
                 </div>
             </div>
         </header>
 
-        <div id="notification-panel" class="notification-panel fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-lg z-50 transform translate-x-full">
-            <div class="flex items-center justify-between p-4 border-b">
-                <h2 class="text-lg font-semibold">Notifications</h2>
-                <button id="close-notification-btn" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        <div id="notification-panel" class="notification-panel fixed top-0 right-0 h-full w-full max-w-md z-50 transform translate-x-full">
+            <div class="flex items-center justify-between p-6 border-b border-slate-200/20">
+                <h2 class="text-xl font-bold text-slate-800">Notifications</h2>
+                <button id="close-notification-btn" class="p-2 rounded-xl hover:bg-slate-100 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
-            <div class="overflow-y-auto h-[calc(100vh-65px)] p-4 space-y-3">${notificationItems}</div>
+            <div class="overflow-y-auto h-[calc(100vh-89px)] p-6 space-y-4">${notificationItems}</div>
         </div>
-        <div id="notification-overlay" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+        <div id="notification-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden"></div>
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                <div class="bg-slate-100 p-1.5 rounded-lg flex space-x-2">
-                    <button data-tab="live" class="tab-btn w-full sm:w-auto px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-300 bg-white text-blue-600 shadow-sm">Live</button>
-                    <button data-tab="up" class="tab-btn w-full sm:w-auto px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-md transition-colors duration-300">Upcoming</button>
-                    <button data-tab="completed" class="tab-btn w-full sm:w-auto px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-md transition-colors duration-300">Recorded</button>
-                </div>
-                <div class="flex-shrink-0">
-                    <select id="batch-filter" class="block w-full sm:w-64 pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-lg shadow-sm">${batchOptions}</select>
-                </div>
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="glass-effect rounded-2xl p-2 mb-8">
+                <nav class="flex space-x-2" aria-label="Tabs">
+                    <button data-tab="live" class="tab-btn flex-1 text-center tab-active">
+                        <span class="font-bold">Live</span>
+                    </button>
+                    <button data-tab="up" class="tab-btn flex-1 text-center text-white/70">
+                        <span class="font-bold">Upcoming</span>
+                    </button>
+                    <button data-tab="completed" class="tab-btn flex-1 text-center text-white/70">
+                        <span class="font-bold">Recorded</span>
+                    </button>
+                </nav>
+            </div>
+            
+            <div class="mb-8">
+                <select id="batch-filter" class="dropdown-modern block w-full max-w-xs px-4 py-3 text-slate-700 font-medium focus:outline-none focus:ring-4 focus:ring-blue-500/30 transition-all duration-300">${batchOptions}</select>
             </div>
             
             <div id="content-area">
-                <section id="live-content" class="content-panel mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">${liveCards}</section>
-                <section id="up-content" class="content-panel mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 hidden">${upCards}</section>
-                <section id="completed-content" class="content-panel mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 hidden">${completedCards}</section>
+                <div id="live-content" class="content-panel grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">${liveCards}</div>
+                <div id="up-content" class="content-panel grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 hidden">${upCards}</div>
+                <div id="completed-content" class="content-panel grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 hidden">${completedCards}</div>
             </div>
+            
             <div id="empty-state" class="text-center py-20 hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c.251.023.501.05.75.082a.75.75 0 01.75.75v5.714a2.25 2.25 0 00.659 1.591L19.8 18.44a2.25 2.25 0 010 3.182H5.2a2.25 2.25 0 010-3.182l5.109-5.109a2.25 2.25 0 00.66-1.591V3.936c0-.256.03-.51.082-.75.052-.239.122-.468.214-.685a.75.75 0 01.75-.75h.75c.256 0 .51.03.75.082z" /></svg>
-                <h3 class="mt-4 text-lg font-semibold text-slate-900">No Lectures Found</h3>
-                <p class="mt-1 text-sm text-slate-500">There are no lectures available for the selected filter.</p>
+                <div class="glass-effect rounded-2xl p-12 max-w-md mx-auto">
+                    <svg class="w-20 h-20 mx-auto text-white/40 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    <h3 class="text-xl font-bold text-white mb-2">No Lectures Found</h3>
+                    <p class="text-white/70">Try selecting a different batch or check back later.</p>
+                </div>
             </div>
         </main>
         
-        <footer class="bg-white border-t mt-16"><div class="max-w-7xl mx-auto py-8 px-4 text-center text-sm text-slate-500"><p>&copy; ${new Date().getFullYear()} Study Smarterz. All rights reserved.</p><a href="https://t.me/studysmarterhub" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 font-semibold mt-2 inline-block">Join our Telegram Channel</a></div></footer>
+        <footer class="glass-effect border-t-0 mt-20">
+            <div class="max-w-7xl mx-auto py-8 px-4 text-center">
+                <p class="text-white/70 font-medium">&copy; ${new Date().getFullYear()} Study Smarterz. All rights reserved.</p>
+                <a href="https://t.me/studysmarterhub" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-white hover:text-blue-300 font-bold mt-4 px-6 py-3 glass-effect rounded-xl transition-all duration-300 hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                    </svg>
+                    Join Telegram Community
+                </a>
+            </div>
+        </footer>
     </div>
 
-    <div id="telegram-popup" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden"><div id="popup-content" class="bg-white rounded-xl shadow-xl max-w-sm w-full p-8 text-center transform transition-all scale-95 opacity-0"><h3 class="text-xl font-bold text-slate-900 mt-4">Join Our Community!</h3><p class="text-sm text-slate-500 mt-2 leading-relaxed">Stay updated with the latest classes, notes, and important announcements by joining our official Telegram channel.</p><div class="mt-6 space-y-3"><a href="https://t.me/studysmarterhub" target="_blank" class="flex items-center justify-center w-full rounded-lg shadow-sm px-4 py-2.5 bg-blue-600 text-base font-semibold text-white hover:bg-blue-700 transition-colors">Join Telegram</a><button type="button" id="close-popup-btn" class="flex items-center justify-center w-full rounded-lg border border-slate-300 shadow-sm px-4 py-2.5 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Maybe Later</button></div></div></div>
+    <div id="telegram-popup" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="popup-content" class="glass-effect rounded-2xl max-w-sm w-full p-8 text-center transform transition-all scale-95 opacity-0 border border-white/20">
+            <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-3">Join Our Community!</h3>
+            <p class="text-white/80 mb-8 leading-relaxed">Stay updated with the latest classes, notes, and announcements in our vibrant learning community.</p>
+            <div class="space-y-4">
+                <a href="https://t.me/studysmarterhub" target="_blank" class="inline-flex justify-center items-center w-full rounded-xl px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                    </svg>
+                    Join Telegram
+                </a>
+                <button type="button" id="close-popup-btn" class="inline-flex justify-center w-full rounded-xl px-6 py-4 glass-effect text-white font-semibold hover:bg-white/20 transition-all duration-300 border border-white/30">
+                    Maybe Later
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Client-side interactivity script
             const tabs = document.querySelectorAll('.tab-btn');
             const contentPanels = document.querySelectorAll('.content-panel');
             const batchFilter = document.getElementById('batch-filter');
@@ -242,43 +370,76 @@ const buildFullHtmlPage = (live, up, completed, notifications) => {
             function filterContent() {
                 const selectedBatch = batchFilter.value;
                 const activePanel = document.getElementById(activeTab + '-content');
-                if (!activePanel) return;
-                
-                const cards = activePanel.querySelectorAll('a, div.block');
+                const cards = activePanel.querySelectorAll('a, div');
                 let visibleCount = 0;
-                cards.forEach(card => {
+                
+                cards.forEach((card, index) => {
                     const cardElement = card.querySelector('.lecture-card');
-                    if (selectedBatch === 'all' || cardElement.dataset.batch === selectedBatch) {
-                        card.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        card.style.display = 'none';
+                    if (cardElement) {
+                        if (selectedBatch === 'all' || cardElement.dataset.batch === selectedBatch) {
+                            card.style.display = 'block';
+                            // Add staggered animation
+                            setTimeout(() => {
+                                card.style.opacity = '1';
+                                card.style.transform = 'translateY(0)';
+                            }, index * 100);
+                            visibleCount++;
+                        } else {
+                            card.style.display = 'none';
+                        }
                     }
                 });
+                
                 emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-                activePanel.style.display = visibleCount > 0 ? 'grid' : 'none';
             }
 
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
                     activeTab = tab.dataset.tab;
                     
+                    // Reset all tabs
                     tabs.forEach(t => {
-                        t.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
-                        t.classList.add('text-slate-600', 'hover:text-slate-800');
+                        t.classList.remove('tab-active');
+                        t.classList.add('text-white/70');
                     });
-                    tab.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-                    tab.classList.remove('text-slate-600', 'hover:text-slate-800');
-
-                    contentPanels.forEach(panel => {
-                        panel.id === activeTab + '-content' ? panel.classList.remove('hidden') : panel.classList.add('hidden');
+                    
+                    // Activate current tab
+                    tab.classList.add('tab-active');
+                    tab.classList.remove('text-white/70');
+                    
+                    // Hide all panels
+                    contentPanels.forEach(panel => panel.classList.add('hidden'));
+                    
+                    // Show active panel
+                    document.getElementById(activeTab + '-content').classList.remove('hidden');
+                    
+                    // Reset card animations
+                    const activePanel = document.getElementById(activeTab + '-content');
+                    const cards = activePanel.querySelectorAll('a, div');
+                    cards.forEach(card => {
+                        if (card.querySelector('.lecture-card')) {
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateY(20px)';
+                        }
                     });
-                    filterContent();
+                    
+                    setTimeout(() => filterContent(), 50);
                 });
             });
 
             batchFilter.addEventListener('change', filterContent);
-            filterContent(); // Initial check on load
+            
+            // Initial setup
+            const initialCards = document.querySelectorAll('#live-content a, #live-content div');
+            initialCards.forEach(card => {
+                if (card.querySelector('.lecture-card')) {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                }
+            });
+            
+            setTimeout(() => filterContent(), 100);
             
             // Notification Panel Logic
             const notificationBtn = document.getElementById('notification-btn');
@@ -286,38 +447,40 @@ const buildFullHtmlPage = (live, up, completed, notifications) => {
             const notificationPanel = document.getElementById('notification-panel');
             const notificationOverlay = document.getElementById('notification-overlay');
             
-            const openPanel = () => {
+            notificationBtn.addEventListener('click', () => {
                 notificationPanel.classList.remove('translate-x-full');
                 notificationOverlay.classList.remove('hidden');
-            };
-            const closePanel = () => {
+            });
+            
+            closeNotificationBtn.addEventListener('click', () => {
                 notificationPanel.classList.add('translate-x-full');
                 notificationOverlay.classList.add('hidden');
-            };
-
-            notificationBtn.addEventListener('click', openPanel);
-            closeNotificationBtn.addEventListener('click', closePanel);
-            notificationOverlay.addEventListener('click', closePanel);
+            });
+            
+            notificationOverlay.addEventListener('click', () => {
+                notificationPanel.classList.add('translate-x-full');
+                notificationOverlay.classList.add('hidden');
+            });
 
             // Popup Logic
             const popup = document.getElementById('telegram-popup');
             const popupContent = document.getElementById('popup-content');
+            
             setTimeout(() => {
-                popup.classList.remove('hidden');
-                popup.classList.add('flex'); // to enable flex centering
-                setTimeout(() => { // short delay to allow display change before transition
+                popup.style.display = 'flex';
+                setTimeout(() => {
                     popupContent.classList.remove('scale-95', 'opacity-0');
                     popupContent.classList.add('scale-100', 'opacity-100');
                 }, 50);
-            }, 1500); // Popup appears after 1.5 seconds
-
+            }, 1000);
+            
             document.getElementById('close-popup-btn').addEventListener('click', () => {
                 popupContent.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => popup.classList.add('hidden'), 300);
+                setTimeout(() => popup.style.display = 'none', 300);
             });
 
-            // Auto-refresh the page every 90 seconds
-            setTimeout(() => { window.location.reload(); }, 90000);
+            // Auto-refresh the page every 60 seconds to get new server-rendered content
+            setTimeout(() => { window.location.reload(); }, 60000);
         });
     </script>
 </body>
@@ -326,7 +489,7 @@ const buildFullHtmlPage = (live, up, completed, notifications) => {
 
 /**
  * CACHE UPDATE LOGIC
- * (No changes here, functionality is the same)
+ * This function runs periodically to refresh the data and rebuild the HTML.
  */
 const updateCache = async () => {
     console.log('Updating cache...');
