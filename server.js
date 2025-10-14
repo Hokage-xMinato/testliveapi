@@ -4,16 +4,539 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Pre-generated loading spinner html (modern gradient spinner)
-let cachedHtml = `<!DOCTYPE html><html><head><title>Study Smarterz</title><style>
-  body{display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;}
-  .spinner {width: 64px;height: 64px;border-radius: 50%;position: relative;background: conic-gradient(from 0deg, transparent, #fff);animation: spin 1s linear infinite;}
-  .spinner::before {content: "";position: absolute;top: 8px;left: 8px;right: 8px;bottom: 8px;border-radius: 50%;background: transparent;border: 3px solid rgba(255,255,255,0.3);}
-  @keyframes spin {to {transform: rotate(360deg);}}
-  </style></head><body><div class="spinner"></div><p style="margin-left: 24px; font-size: 1.25rem; font-weight: 500;">Loading live classes, please wait...</p></body></html>`;
+// The full updated HTML template with placeholders for dynamic content
+let cachedHtml = `<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Study Smarterz - Live Classes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
+<style>
+  body {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    margin: 0; padding: 0;
+    background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%);
+    color: #e4e7eb;
+    transition: background 1.5s ease, color 1.2s ease;
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Light mode styles */
+  html.light body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    color: #1a202c;
+  }
+  /* Smooth header color transition */
+  header {
+    transition: background-color 1.2s ease, color 1.2s ease;
+  }
+  html.light header {
+    background-color: rgba(255 255 255 / 0.85);
+    color: #5b21b6;
+  }
+  html:not(.light) header {
+    background-color: rgba(31 41 55 / 0.85);
+    color: #e0d7f6;
+  }
+
+  /* Background shining animation */
+  @keyframes bgShine {
+    0%, 100% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(270deg, #9d7ace, #ff61a6, #5ac8fa, #9d7ace);
+    background-size: 600% 600%;
+    animation: bgShine 20s ease infinite;
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 0;
+    filter: blur(70px);
+    transition: opacity 1.5s ease;
+  }
+  html.light body::before {
+    opacity: 0.25;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px; height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #8b5cf6;
+    border-radius: 20px;
+    transition: background-color 0.3s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #c084fc;
+  }
+
+  /* Tabs */
+  .tab-btn {
+    padding: 0.75rem 2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    user-select: none;
+    box-shadow: 0 4px 6px rgb(139 92 246 / 0.6);
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+    color: white !important;
+    box-shadow: 0 8px 15px rgb(236 72 153 / 0.85);
+    transform: translateY(-3px);
+  }
+  .tab-btn:not(.active) {
+    color: #c4b5fd;
+    background: transparent;
+  }
+  .tab-btn:not(.active):hover {
+    color: white;
+  }
+  html.light .tab-btn.active {
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    color: white !important;
+    box-shadow: 0 8px 15px rgb(236 72 153 / 0.85);
+  }
+  html.light .tab-btn:not(.active) {
+    color: #7c3aed;
+  }
+  html.light .tab-btn:not(.active):hover {
+    background: rgba(124, 58, 237, 0.3);
+    color: white;
+  }
+
+  /* Cards */
+  .lecture-card {
+    cursor: pointer;
+    border-radius: 1.5rem;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease;
+    box-shadow: 0 4px 12px rgb(124 58 237 / 0.3);
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    color: white;
+  }
+  .lecture-card:hover {
+    transform: translateY(-12px) scale(1.05);
+    box-shadow: 0 20px 40px rgb(236 72 153 / 0.8);
+    z-index: 20;
+  }
+  html.light .lecture-card {
+    box-shadow: 0 4px 15px rgb(165 180 252 / 0.4);
+    background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+    color: #2c2c2c;
+  }
+  html.light .lecture-card:hover {
+    box-shadow: 0 20px 40px rgb(244 114 182 / 0.8);
+  }
+
+  /* Box around images */
+  .image-wrapper {
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 6px;
+    background: linear-gradient(45deg, #7c3aed, #ec4899);
+  }
+  html.light .image-wrapper {
+    background: linear-gradient(45deg, #a78bfa, #f472b6);
+  }
+  .image-wrapper img {
+    border-radius: 1.25rem;
+    width: 100%;
+    height: 192px;
+    object-fit: cover;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+    transition: transform 0.7s ease;
+  }
+  .lecture-card:hover img {
+    transform: scale(1.1);
+  }
+
+  /* Tap to watch - visible only on hover */
+  .tap-to-watch {
+    color: rgba(255,255,255,0.85);
+    font-weight: 600;
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(124, 58, 237, 0.85);
+    padding: 0.4rem 1rem;
+    border-radius: 1.5rem;
+    font-size: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    user-select: none;
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.7);
+  }
+  html.light .tap-to-watch {
+    background: rgba(167, 139, 250, 0.85);
+    color: #2c2c2c;
+    box-shadow: 0 0 15px rgba(244, 114, 182, 0.7);
+  }
+  .lecture-card:hover .tap-to-watch {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Footer improvements */
+  footer {
+    margin-top: 5rem;
+    text-align: center;
+    font-weight: 600;
+    color: rgba(255 255 255 / 0.6);
+    user-select: none;
+    transition: color 1.3s ease;
+  }
+  html.light footer {
+    color: #6b21a8;
+  }
+  footer a {
+    color: #a78bfa;
+    font-weight: 700;
+    transition: color 0.3s ease;
+  }
+  footer a:hover {
+    color: #ec4899;
+  }
+
+  /* Notification Panel */
+  #notification-panel {
+    background: rgba(30 30 39 / 0.95);
+    backdrop-filter: blur(18px);
+    border-radius: 1.5rem 0 0 1.5rem;
+    box-shadow: 0 0 30px rgba(236 72 153 / 0.5);
+    transition: transform 0.3s ease;
+    z-index: 100;
+  }
+  html.light #notification-panel {
+    background: rgba(255 255 255 / 0.95);
+    box-shadow: 0 0 30px rgba(124 58 237 / 0.4);
+  }
+
+  /* Popup style */
+  #telegram-popup {
+    backdrop-filter: blur(16px);
+    background: rgba(0 0 0 / 0.75);
+    z-index: 1050;
+    display: none;
+  }
+  #popup-content {
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    box-shadow: 0 12px 50px rgba(236 72 153 / 0.9);
+    color: white;
+    user-select: none;
+    font-weight: 700;
+    max-width: 400px;
+    text-align: center;
+  }
+  #popup-content a {
+    background: white;
+    color: #7c3aed;
+    border-radius: 1.5rem;
+    padding: 0.9rem 2rem;
+    font-weight: 800;
+    text-decoration: none;
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  #popup-content a:hover {
+    background-color: #ede9fe;
+  }
+  #popup-content button {
+    border: 3px solid white;
+    background: transparent;
+    border-radius: 1.5rem;
+    color: white;
+    font-weight: 700;
+    padding: 0.9rem 2rem;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  #popup-content button:hover {
+    background: white;
+    color: #7c3aed;
+  }
+
+  /* Quotes on page */
+  .quote {
+    position: fixed;
+    user-select: none;
+    font-style: italic;
+    font-weight: 600;
+    color: rgba(255 255 255 / 0.15);
+    font-size: 2.8rem;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: floatUpDown 8s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  html.light .quote {
+    color: rgba(124 58 237 / 0.1);
+    mix-blend-mode: normal;
+  }
+  @keyframes floatUpDown {
+    0%, 100% {transform: translateY(0);}
+    50% {transform: translateY(-15px);}
+  }
+
+  /* Utility fadeIn animation */
+  @keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+  .animate-fadein {
+    animation: fadeIn 1.5s ease forwards;
+  }
+</style>
+</head>
+<body>
+<script>
+  if (window.top !== window.self) {
+    try {window.top.location = window.self.location;} catch(e) {console.error('Frame bust failed:', e);}
+  }
+</script>
+
+<div id="app-container" class="min-h-screen px-6 py-8 max-w-7xl mx-auto relative">
+
+  <!-- Quotes -->
+  <div class="quote" style="top:10%; left: 10%; animation-delay: 0s;">🌟 "Learning is a treasure that will follow its owner everywhere." 🌟</div>
+  <div class="quote" style="top:25%; right: 12%; animation-delay: 3s;">💡 "Knowledge is power, and smart work is the key." 💡</div>
+  <div class="quote" style="bottom:15%; left: 8%; animation-delay: 6s;">📚 "Unlock your potential with every lecture." 📚</div>
+  <div class="quote" style="bottom:10%; right: 10%; animation-delay: 9s;">🚀 "Success is the sum of small efforts, repeated daily." 🚀</div>
+  <div class="quote" style="top:60%; left: 50%; transform: translateX(-50%);" >✨ "Stay motivated, study smarter!" ✨</div>
+
+  <!-- Header -->
+  <header class="flex justify-between items-center mb-12 select-none">
+    <h1 id="logo" class="font-extrabold text-4xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 cursor-default">
+      Study Smarterz
+    </h1>
+    <button id="toggle-theme" aria-label="Toggle Dark/Light Mode" title="Toggle Dark/Light Mode" class="px-5 py-2 text-xl rounded-lg font-semibold border-2 border-purple-400 text-purple-400 hover:bg-purple-300 transition flex items-center gap-3 dark:text-pink-400 dark:border-pink-400 dark:hover:bg-pink-600">
+      <i id="theme-icon" class="fas fa-moon"></i> <span id="theme-text">Dark Mode</span>
+    </button>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="flex space-x-6 mb-6" aria-label="Tabs" role="tablist">
+    <button role="tab" aria-selected="true" aria-controls="live-content" id="tab-live" class="tab-btn active">🔥 Live</button>
+    <button role="tab" aria-selected="false" aria-controls="up-content" id="tab-up" class="tab-btn">⏰ Upcoming</button>
+    <button role="tab" aria-selected="false" aria-controls="completed-content" id="tab-completed" class="tab-btn">📚 Recorded</button>
+  </nav>
+
+  <!-- Batch Filter -->
+  <div class="mb-8">
+    <label for="batch-filter" class="block font-semibold mb-2 text-purple-400 dark:text-pink-400">Filter by Batch</label>
+    <select id="batch-filter" aria-label="Batch filter">${'${batchOptions}'}</select>
+  </div>
+
+  <!-- Content Panels -->
+  <section id="content-area" aria-live="polite">
+    <div id="live-content" role="tabpanel" aria-labelledby="tab-live" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      ${'${liveCards}'}
+    </div>
+    <div id="up-content" role="tabpanel" aria-labelledby="tab-up" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      ${'${upCards}'}
+    </div>
+    <div id="completed-content" role="tabpanel" aria-labelledby="tab-completed" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      ${'${completedCards}'}
+    </div>
+  </section>
+
+  <!-- No content / empty states -->
+  <div id="empty-state" class="text-center mt-20 hidden" role="alert" aria-live="assertive">
+    <h3>No matching lectures found</h3>
+    <p>Please adjust your filters or check again later.</p>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>© ${new Date().getFullYear()} Study Smarterz. All rights reserved.</p>
+    <a href="https://t.me/studysmarterhub" target="_blank" rel="noopener noreferrer" class="inline-flex items-center mt-2 font-bold hover:underline text-purple-400 dark:text-pink-400">
+      <i class="fab fa-telegram-plane mr-2"></i> Join Telegram Community
+    </a>
+  </footer>
+
+</div>
+
+<!-- Telegram Join Popup -->
+<div id="telegram-popup" class="fixed inset-0 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="popup-title" aria-describedby="popup-desc" style="display:none;">
+  <div id="popup-content" class="text-center">
+    <h3 id="popup-title" class="text-3xl font-extrabold text-white mb-4">Join Our Community! 🎉</h3>
+    <p id="popup-desc" class="text-white/80 mb-8 px-6">Stay updated with the latest classes, notes, and announcements in our vibrant learning group.</p>
+    <div class="flex flex-col gap-4 px-8">
+      <a href="https://t.me/studysmarterhub" target="_blank" class="bg-white text-purple-600 rounded-xl px-6 py-3 font-bold hover:bg-purple-100 transition flex items-center gap-2 justify-center" id="join-tg-button">
+        <i class="fab fa-telegram-plane text-xl"></i> Join Telegram
+      </a>
+      <button id="close-popup-btn" class="border-2 border-white text-white rounded-xl px-6 py-3 font-semibold hover:bg-white/20 transition">Maybe Later</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const tabs = document.querySelectorAll('button[role="tab"]');
+  const panels = document.querySelectorAll('section#content-area > div[role="tabpanel"]');
+  const batchFilter = document.getElementById('batch-filter');
+  const emptyState = document.getElementById('empty-state');
+  const telegramPopup = document.getElementById('telegram-popup');
+  const joinTgBtn = document.getElementById('join-tg-button');
+  const closePopupBtn = document.getElementById('close-popup-btn');
+  const toggleThemeBtn = document.getElementById('toggle-theme');
+  const themeIcon = document.getElementById('theme-icon');
+  const themeText = document.getElementById('theme-text');
+  const htmlEl = document.documentElement;
+
+  // Initialization: active tab from sessionStorage or default 'live'
+  let activeTab = sessionStorage.getItem('activeTab') || 'live';
+
+  // Initialization: theme preference from localStorage or default dark
+  let themePref = localStorage.getItem('theme');
+  if (!themePref) { // default dark mode
+    htmlEl.classList.remove('light');
+    htmlEl.classList.add('dark');
+    themePref = 'dark';
+  } else if (themePref === 'light') {
+    htmlEl.classList.add('light');
+    htmlEl.classList.remove('dark');
+  } else {
+    htmlEl.classList.add('dark');
+    htmlEl.classList.remove('light');
+  }
+  // Update toggle button icon/text
+  function updateThemeButton() {
+    if (htmlEl.classList.contains('light')) {
+      themeIcon.className = 'fas fa-sun';
+      themeText.textContent = 'Light Mode';
+    } else {
+      themeIcon.className = 'fas fa-moon';
+      themeText.textContent = 'Dark Mode';
+    }
+  }
+  updateThemeButton();
+
+  // Filter cards by batch for shown tab
+  function filterCards() {
+    const selectedBatch = batchFilter.value;
+    const activePanel = document.getElementById(activeTab + '-content');
+    const cards = activePanel.querySelectorAll('a, div.lecture-card');
+    let shownCount = 0;
+    cards.forEach(card => {
+      const cardElem = card.classList.contains('lecture-card') ? card : card.querySelector('.lecture-card');
+      if (!cardElem) return;
+      if (selectedBatch === 'all' || cardElem.dataset.batch === selectedBatch) {
+        card.style.display = 'block';
+        // Animate appearance
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, 100);
+        shownCount++;
+      } else card.style.display = 'none';
+    });
+    emptyState.style.display = shownCount === 0 ? 'block' : 'none';
+    if (emptyState.style.display === 'block') {
+      let message = '';
+      switch (activeTab) {
+        case 'live': message = '<h3>No Live Lectures Now</h3><p>Please check back soon or try another batch.</p>'; break;
+        case 'up': message = '<h3>No Upcoming Lectures Scheduled</h3><p>Stay tuned for all new batches!</p>'; break;
+        case 'completed': message = '<h3>No Recorded Lectures Found</h3><p>Keep learning, new content is coming soon.</p>'; break;
+        default: message = '<h3>No Lectures Found</h3><p>Try adjusting filters or check back later.</p>';
+      }
+      emptyState.innerHTML = message;
+    }
+  }
+
+  // Show active tab's panel & mark tab active
+  function showTab(tabId) {
+    activeTab = tabId;
+    sessionStorage.setItem('activeTab', activeTab);
+    tabs.forEach(t => {
+      const isActive = t.id === 'tab-' + tabId;
+      t.classList.toggle('active', isActive);
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    panels.forEach(p => {
+      const isVisible = p.id === activeTab + '-content';
+      p.classList.toggle('hidden', !isVisible);
+      p.setAttribute('aria-hidden', !isVisible);
+    });
+    filterCards();
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (!tab.classList.contains('active')) showTab(tab.id.replace('tab-', ''));
+    });
+  });
+
+  batchFilter.addEventListener('change', filterCards);
+
+  // Theme toggle with persistence
+  toggleThemeBtn.addEventListener('click', () => {
+    if (htmlEl.classList.contains('light')) {
+      htmlEl.classList.remove('light');
+      htmlEl.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      htmlEl.classList.add('light');
+      htmlEl.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+    updateThemeButton();
+  });
+
+  // Popup sessionStorage suppression logic
+  function popupShouldShow() {
+    return sessionStorage.getItem('popupDismissed') === null;
+  }
+  function closePopup(storeDismiss = true) {
+    telegramPopup.style.display = 'none';
+    if (storeDismiss) sessionStorage.setItem('popupDismissed', '1');
+  }
+  if (popupShouldShow()) {
+    setTimeout(() => {
+      telegramPopup.style.display = 'flex';
+    }, 1500);
+  }
+  closePopupBtn.addEventListener('click', () => closePopup(true));
+  joinTgBtn.addEventListener('click', () => closePopup(true));
+
+  // Initialize UI states
+  showTab(activeTab);
+
+  // Auto-refresh every 60 seconds to fetch fresh server data
+  setTimeout(() => window.location.reload(), 60000);
+})();
+</script>
+</body>
+</html>`;
 
 /**
- * Utility Functions
+ * Utility function to replace branded text
  */
 const textReplacer = (text) => {
   if (typeof text !== 'string') return text;
@@ -22,6 +545,9 @@ const textReplacer = (text) => {
     .replace(/coderz/gi, 'smarter');
 };
 
+/**
+ * Utility: fetch and parse API data
+ */
 const fetchApiData = async (endpoint) => {
   const url = `https://api.rolexcoderz.live/${endpoint}`;
   try {
@@ -39,7 +565,7 @@ const fetchApiData = async (endpoint) => {
 };
 
 /**
- * HTML Rendering Functions
+ * Lecture card colors and icons
  */
 const lectureColors = [
   'bg-gradient-to-r from-pink-400 to-yellow-400 text-yellow-900',
@@ -54,9 +580,11 @@ const iconMap = {
   up: '⏰',
   completed: '📚'
 };
-
 const getRandomColorClass = (index) => lectureColors[index % lectureColors.length];
 
+/**
+ * Render lecture cards HTML
+ */
 const renderLectureCards = (data, type) => {
   if (!data || data.length === 0) return '';
 
@@ -73,15 +601,16 @@ const renderLectureCards = (data, type) => {
         if (imageUrl.hostname.endsWith('cloudfront.net')) {
           isImageValid = true;
           imageHtml = `
-          <img src="${item.image}" alt="${title}" class="h-48 w-full object-cover transition-transform duration-700 group-hover:scale-110 animate-float" loading="lazy"
-            onerror="this.onerror=null; this.parentElement.innerHTML = '<div class=\\'h-48 w-full flex items-center justify-center p-4 text-center font-bold ${colorClass} rounded-2xl shadow-lg animate-pulse\\'>${title}</div>';">`;
+          <div class="image-wrapper">
+            <img src="${item.image}" alt="${title}" loading="lazy"
+              onerror="this.onerror=null; this.parentElement.innerHTML = '<div class=\\'p-12 font-bold text-center text-xl rounded-xl bg-gray-200 dark:bg-gray-700\\'>${title}</div>';">
+          </div>`;
         }
       } catch {}
     }
     if(!isImageValid) {
-      imageHtml = `<div class="h-48 w-full flex items-center justify-center p-4 text-center font-bold ${colorClass} rounded-2xl shadow-lg animate-pulse">${title}</div>`;
+      imageHtml = `<div class="image-wrapper p-12 font-bold text-center text-xl rounded-xl bg-gray-200 dark:bg-gray-700">${title}</div>`;
     }
-
     let finalLink = null;
     if (item.link) {
       try {
@@ -95,29 +624,26 @@ const renderLectureCards = (data, type) => {
         }
       } catch {}
     }
-
-    const cardContent = `
-      <div class="lecture-card flex flex-col h-full rounded-3xl overflow-hidden shadow-lg transform transition-all duration-500 hover:scale-105 hover:shadow-2xl group ${colorClass} relative animate-glow cursor-pointer">
-        <span class="absolute top-4 right-4 text-2xl">${iconMap[type] || '🎓'}</span>
-        <div class="overflow-hidden rounded-t-3xl">${imageHtml}</div>
-        <div class="p-6 flex flex-col flex-grow space-y-4">
-          <h3 class="text-xl font-extrabold drop-shadow-lg">${title}</h3>
-          <div class="font-semibold tracking-wide">${batch}</div>
-          <div class="mt-auto opacity-80 italic">Tap to ${finalLink ? 'watch' : 'view'}</div>
+    return `
+      <a href="${finalLink || '#'}" target="${finalLink ? '_blank' : '_self'}" rel="noopener noreferrer" class="lecture-card relative group ${colorClass}" data-batch="${item.batch}">
+        ${imageHtml}
+        <div class="p-6">
+          <h3 class="font-extrabold text-xl mb-2">${title}</h3>
+          <div class="font-semibold mb-4">${batch}</div>
+          <div class="tap-to-watch absolute left-1/2 bottom-6 -translate-x-1/2 cursor-pointer transition-opacity duration-300 opacity-0 group-hover:opacity-100">Tap to Watch</div>
+          <span class="absolute top-4 right-5 text-3xl select-none">${iconMap[type] || '🎓'}</span>
         </div>
-      </div>
-    `;
-
-    return finalLink
-      ? `<a href="${finalLink}" target="_blank" rel="noopener noreferrer" class="block">${cardContent}</a>`
-      : `<div class="block">${cardContent}</div>`;
+      </a>`;
   }).join('');
 };
 
+/**
+ * Render notifications
+ */
 const renderNotifications = (notifications) => {
   if (!notifications || notifications.length === 0) {
     return `
-      <div class="flex flex-col items-center justify-center p-10 text-center text-gray-500 dark:text-gray-400 space-y-3 animate-fade-in">
+      <div class="flex flex-col items-center justify-center p-10 text-center text-gray-500 dark:text-gray-400 space-y-3 animate-fadein">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 mx-auto text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
@@ -137,6 +663,9 @@ const renderNotifications = (notifications) => {
   }).join('');
 };
 
+/**
+ * Render batch options for select dropdown
+ */
 const renderBatchOptions = (live, up, completed) => {
   const allData = [...live, ...up, ...completed];
   const batches = ['all', ...new Set(allData.map(item => item.batch))];
@@ -145,9 +674,8 @@ const renderBatchOptions = (live, up, completed) => {
   ).join('');
 };
 
-
 /**
- * MAIN PAGE TEMPLATE
+ * Build full updated HTML page
  */
 const buildFullHtmlPage = (live, up, completed, notifications) => {
   const liveCards = renderLectureCards(live, 'live');
@@ -156,471 +684,17 @@ const buildFullHtmlPage = (live, up, completed, notifications) => {
   const notificationItems = renderNotifications(notifications);
   const batchOptions = renderBatchOptions(live, up, completed);
 
-  return `<!DOCTYPE html>
-<html lang="en" class="scroll-smooth" >
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Study Smarterz - Live Classes</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>  
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
-  <style>
-    /* Global resets and fonts */
-    body {
-      font-family: 'Inter', 'Poppins', sans-serif;
-      margin: 0; padding: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-      color: #1a202c;
-      transition: background 0.6s ease, color 0.6s ease;
-    }
-    /* Dark mode support */
-    html.dark body {
-      background: linear-gradient(135deg, #1f2937 0%, #4b5563 50%, #374151 100%);
-      color: #e4e7eb;
-    }
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #7c3aed;
-      border-radius: 20px;
-      transition: background-color 0.3s ease;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #9d4edd;
-    }
-
-    /* Tab Buttons */
-    .tab-btn {
-      padding: 0.75rem 2rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border-radius: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #7c3aed;
-      background: #f3e8ff;
-      border: none;
-      user-select: none;
-      box-shadow: 0 4px 6px rgb(124 58 237 / 0.4);
-    }
-    .tab-btn:hover:not(.active) {
-      background-color: #ede9fe;
-    }
-    .tab-btn.active {
-      background: linear-gradient(135deg, #7928ca 0%, #ff0080 100%);
-      color: white;
-      box-shadow: 0 8px 15px rgb(255 0 128 / 0.6);
-      transform: translateY(-3px);
-    }
-    html.dark .tab-btn {
-      background: #374151;
-      color: #c4b5fd;
-      box-shadow: 0 4px 6px rgba(148, 163, 184, 0.3);
-    }
-    html.dark .tab-btn.active {
-      color: white;
-      background: linear-gradient(135deg, #e879f9 0%, #d946ef 100%);
-      box-shadow: 0 8px 15px rgb(232 121 249 / 0.8);
-    }
-    html.dark .tab-btn:hover:not(.active) {
-      background: #4b5563;
-    }
-
-    /* Cards */
-    .lecture-card {
-      will-change: transform, box-shadow;
-      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .lecture-card:hover {
-      transform: translateY(-8px) scale(1.05);
-      box-shadow: 0 20px 40px rgb(156 39 176 / 0.5);
-      z-index: 15;
-    }
-
-    .animate-float{
-      animation: float 4s ease-in-out infinite;
-    }
-    @keyframes float {
-      0%, 100%{transform: translateY(0);}
-      50% {transform: translateY(-10px);}
-    }
-
-    /* Glow Animation */
-    .animate-glow {
-      animation: glowPulse 2.6s ease-in-out infinite alternate;
-    }
-    @keyframes glowPulse {
-      0% {
-        filter: drop-shadow(0 0 10px rgb(156 39 176 / 0.7));
-      }
-      100% {
-        filter: drop-shadow(0 0 20px rgb(255 64 64 / 0.9));
-      }
-    }
-
-    /* Dropdown styling */
-    select#batch-filter {
-      padding: 0.7rem 1rem;
-      font-size: 1rem;
-      border-radius: 12px;
-      border: 2px solid #9f7aea;
-      background: #faf5ff;
-      outline-offset: 4px;
-      box-shadow: 0 4px 10px rgb(159 122 234 / 0.3);
-      transition: border-color 0.3s, box-shadow 0.3s;
-      cursor: pointer;
-      font-weight: 600;
-      color: #6b46c1;
-      width: 250px;
-    }
-    select#batch-filter:focus {
-      border-color: #d946ef;
-      box-shadow: 0 0 10px #d946ef;
-      background: #f5d0fe;
-    }
-    html.dark select#batch-filter {
-      background: #4b5563;
-      color: #ddd6fe;
-      border-color: #7c3aed;
-      box-shadow: 0 4px 10px rgba(124, 58, 237, 0.5);
-    }
-    html.dark select#batch-filter:focus {
-      background: #7c3aed;
-      color: white;
-      border-color: #d946ef;
-      box-shadow: 0 0 15px #d946ef;
-    }
-
-    /* Empty states for no lectures */
-    #empty-state {
-      opacity: 0.8;
-      user-select: none;
-    }
-    #empty-state h3 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #a78bfa;
-      margin-bottom: 0.5rem;
-    }
-    #empty-state p {
-      font-size: 1.1rem;
-      font-style: italic;
-      color: #c4b5fd;
-    }
-    html.dark #empty-state h3 {
-      color: #d8b4fe;
-    }
-    html.dark #empty-state p {
-      color: #e9d5ff;
-    }
-
-    /* Notification Panel */
-    #notification-panel {
-      background: rgba(255 255 255 / 0.95);
-      backdrop-filter: blur(20px);
-      box-shadow: 0 0 40px rgba(124, 58, 237, 0.3);
-      border-radius: 16px 0 0 16px;
-    }
-    html.dark #notification-panel {
-      background: rgba(45 45 55 / 0.75);
-      box-shadow: 0 0 40px rgba(232 121 249 / 0.5);
-    }
-
-    /* Popup dark/light backgrounds */
-    #telegram-popup {
-      backdrop-filter: blur(20px);
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 1050;
-    }
-    #popup-content {
-      background: linear-gradient(135deg, #7928ca 0%, #ff0080 100%);
-      color: #fff;
-      max-width: 400px;
-      border-radius: 1rem;
-      padding: 2rem;
-      box-shadow: 0 0 40px rgba(255 0 128 / 0.7);
-      font-weight: 600;
-    }
-    #popup-content a,
-    #popup-content button {
-      border-radius: 12px;
-      padding: 0.75rem 1.5rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      text-align: center;
-      user-select: none;
-      display: block;
-    }
-    #popup-content a {
-      background: white;
-      color: #7928ca;
-      margin-bottom: 1rem;
-    }
-    #popup-content a:hover {
-      background: #f3e8ff;
-    }
-    #popup-content button {
-      background: transparent;
-      border: 2px solid white;
-      color: white;
-    }
-    #popup-content button:hover {
-      background: white;
-      color: #7928ca;
-    }
-
-    /* Utility animations */
-    @keyframes fadeIn {
-      from {opacity: 0;}
-      to {opacity: 1;}
-    }
-    .animate-fade-in {
-      animation: fadeIn 1s ease forwards;
-    }
-  </style>
-</head>
-<body class="transition-colors duration-500">
-<!-- Frame Buster -->
-<script>
-  if (window.top !== window.self) {
-    try {window.top.location = window.self.location;} catch(e){console.error("Frame bust failed:", e);}
-  }
-</script>
-
-<div id="app-container" class="min-h-screen px-4 py-8 max-w-7xl mx-auto relative">
-
-  <!-- Header -->
-  <header class="flex justify-between items-center mb-12">
-    <h1 id="logo" class="font-extrabold text-4xl text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 cursor-pointer select-none">
-      Study Smarterz
-    </h1>
-    <button id="toggle-theme" aria-label="Toggle Dark/Light Mode" title="Toggle Dark/Light Mode" class="px-4 py-2 text-purple-700 dark:text-pink-400 border-2 border-purple-700 dark:border-pink-400 rounded-lg font-semibold hover:bg-purple-100 dark:hover:bg-pink-600 transition">
-      <i class="fas fa-moon"></i>
-    </button>
-  </header>
-
-  <!-- Tabs -->
-  <nav class="flex space-x-6 mb-6" aria-label="Tabs" role="tablist">
-    <button role="tab" aria-selected="true" aria-controls="live-content" id="tab-live" class="tab-btn active">Live</button>
-    <button role="tab" aria-selected="false" aria-controls="up-content" id="tab-up" class="tab-btn">Upcoming</button>
-    <button role="tab" aria-selected="false" aria-controls="completed-content" id="tab-completed" class="tab-btn">Recorded</button>
-  </nav>
-
-  <!-- Batch Filter -->
-  <div class="mb-8">
-    <label for="batch-filter" class="block font-semibold mb-2 text-purple-700 dark:text-pink-400">Filter by Batch</label>
-    <select id="batch-filter" aria-label="Batch filter">${batchOptions}</select>
-  </div>
-
-  <!-- Content Panels -->
-  <section id="content-area" aria-live="polite">
-    <div id="live-content" role="tabpanel" aria-labelledby="tab-live" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      ${liveCards}
-    </div>
-    <div id="up-content" role="tabpanel" aria-labelledby="tab-up" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      ${upCards}
-    </div>
-    <div id="completed-content" role="tabpanel" aria-labelledby="tab-completed" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      ${completedCards}
-    </div>
-  </section>
-
-  <!-- Empty State Feedback -->
-  <div id="empty-state" class="text-center mt-20 hidden" role="alert" aria-live="assertive">
-    <h3>No matching lectures found</h3>
-    <p>Please adjust filters or check back later.</p>
-  </div>
-
-  <!-- Notification Panel -->
-  <aside id="notification-panel" class="fixed top-0 right-0 h-full max-w-sm w-full transform translate-x-full shadow-lg p-6 overflow-y-auto z-50 transition-transform duration-300" aria-label="Notifications">
-    <header class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold">Notifications</h2>
-      <button id="close-notification-btn" aria-label="Close notifications" class="text-pink-600 hover:text-pink-800 text-xl">
-        <i class="fas fa-times"></i>
-      </button>
-    </header>
-    <div id="notifications-list" class="space-y-4">${notificationItems}</div>
-  </aside>
-  <div id="notification-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden" tabindex="-1" aria-hidden="true"></div>
-
-  <!-- Footer -->
-  <footer class="mt-16 text-center text-purple-600 dark:text-pink-400 select-none">
-    <p>&copy; ${new Date().getFullYear()} Study Smarterz. All rights reserved.</p>
-    <a href="https://t.me/studysmarterhub" target="_blank" rel="noopener noreferrer" class="inline-flex items-center mt-2 font-semibold hover:underline">
-      <i class="fab fa-telegram-plane mr-2"></i> Join Telegram Community
-    </a>
-  </footer>
-</div>
-
-<!-- Telegram Join Popup -->
-<div id="telegram-popup" class="fixed inset-0 hidden items-center justify-center bg-black/70 backdrop-blur-sm z-50" role="dialog" aria-modal="true" aria-labelledby="popup-title" aria-describedby="popup-desc">
-  <div id="popup-content" class="p-8 max-w-md rounded-xl shadow-lg text-center space-y-6 relative">
-    <h3 id="popup-title" class="text-3xl font-extrabold text-white">Join Our Community!</h3>
-    <p id="popup-desc" class="text-white/80">
-      Stay updated with the latest classes, notes, and announcements in our vibrant learning group.
-    </p>
-    <div class="flex flex-col gap-4">
-      <a href="https://t.me/studysmarterhub" target="_blank" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-6 py-3 rounded-xl hover:scale-105 transition-transform flex justify-center items-center gap-3" id="join-tg-button">
-        <i class="fab fa-telegram-plane text-xl"></i> Join Telegram
-      </a>
-      <button id="close-popup-btn" class="border-2 border-white text-white rounded-xl px-6 py-3 font-semibold hover:bg-white/20 transition">Maybe Later</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  (() => {
-    const tabs = document.querySelectorAll('button[role="tab"]');
-    const panels = document.querySelectorAll('section#content-area > div[role="tabpanel"]');
-    const batchFilter = document.getElementById('batch-filter');
-    const emptyState = document.getElementById('empty-state');
-    const notificationBtn = document.getElementById('notification-btn');
-    const notificationPanel = document.getElementById('notification-panel');
-    const notificationOverlay = document.getElementById('notification-overlay');
-    const closeNotificationBtn = document.getElementById('close-notification-btn');
-    const telegramPopup = document.getElementById('telegram-popup');
-    const joinTgBtn = document.getElementById('join-tg-button');
-    const closePopupBtn = document.getElementById('close-popup-btn');
-    const toggleThemeBtn = document.getElementById('toggle-theme');
-    const htmlEl = document.documentElement;
-
-    let activeTab = 'live';
-
-    // Filter cards by batch and active tab
-    function filterCards() {
-      const selectedBatch = batchFilter.value;
-      const activePanel = document.getElementById(activeTab + '-content');
-      const cards = activePanel.querySelectorAll('a, div.lecture-card');
-      let shownCount = 0;
-
-      cards.forEach(card => {
-        // lecture-card class always on a div inside a or div
-        const cardElem = card.classList.contains('lecture-card') ? card : card.querySelector('.lecture-card');
-        if (!cardElem) return;
-
-        if(selectedBatch === 'all' || cardElem.textContent.toLowerCase().includes(selectedBatch.toLowerCase()) || cardElem.dataset.batch === selectedBatch){
-          card.style.display = 'block';
-          shownCount++;
-          // Animate appearance
-          card.style.opacity = '0';
-          card.style.transform = 'translateY(20px)';
-          setTimeout(() => {
-            card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-          }, 100);
-        } else {
-          card.style.display = 'none';
-        }
-      });
-
-      // Show no results if nothing is visible
-      emptyState.style.display = shownCount === 0 ? 'block' : 'none';
-
-      // Change empty state messages based on active tab
-      if(emptyState.style.display === 'block') {
-        let message = '';
-        switch(activeTab) {
-          case 'live': message = '<h3>No Live Lectures Now</h3><p>Please check back soon or try another batch.</p>'; break;
-          case 'up': message = '<h3>No Upcoming Lectures Scheduled</h3><p>Stay tuned for future batches!</p>'; break;
-          case 'completed': message = '<h3>No Recorded Lectures Found</h3><p>Keep learning, new content may arrive soon.</p>'; break;
-          default: message = '<h3>No Lectures Found</h3><p>Try adjusting filters or check back later.</p>';
-        }
-        emptyState.innerHTML = message;
-      }
-    }
-
-    // Tabs click handler
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        activeTab = tab.id.replace('tab-', '');
-
-        tabs.forEach(t => {
-          const isActive = t === tab;
-          t.classList.toggle('active', isActive);
-          t.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
-        panels.forEach(panel => {
-          panel.classList.toggle('hidden', panel.id !== activeTab + '-content');
-          panel.setAttribute('aria-hidden', panel.id !== activeTab + '-content');
-        });
-
-        filterCards();
-      });
-    });
-
-    batchFilter.addEventListener('change', filterCards);
-
-    // Initial filter and visibility setup
-    filterCards();
-
-    // Notification Panel Toggles (support disabled since no visible button, kept for extensibility)
-    if(notificationBtn){
-      notificationBtn.addEventListener('click', () => {
-        notificationPanel.classList.remove('translate-x-full');
-        notificationOverlay.classList.remove('hidden');
-      });
-    }
-    closeNotificationBtn.addEventListener('click', () => {
-      notificationPanel.classList.add('translate-x-full');
-      notificationOverlay.classList.add('hidden');
-    });
-    notificationOverlay.addEventListener('click', () => {
-      notificationPanel.classList.add('translate-x-full');
-      notificationOverlay.classList.add('hidden');
-    });
-
-    // Popup Session Storage Logic
-    function popupShouldShow() {
-      return sessionStorage.getItem('popupDismissed') === null;
-    }
-    function closePopup(storeDismiss=true) {
-      telegramPopup.style.display = 'none';
-      if(storeDismiss) sessionStorage.setItem('popupDismissed', '1');
-    }
-
-    if(popupShouldShow()) {
-      setTimeout(() => {
-        telegramPopup.style.display = 'flex';
-      }, 1800);
-    }
-
-    closePopupBtn.addEventListener('click', () => {
-      closePopup(true);
-    });
-    joinTgBtn.addEventListener('click', () => {
-      closePopup(true);
-    });
-
-    // Theme toggle (dark/light mode)
-    toggleThemeBtn.addEventListener('click', () => {
-      const isDark = htmlEl.classList.toggle('dark');
-      toggleThemeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-      // Optionally persist preference: localStorage.setItem('dark_mode', isDark);
-    });
-
-    // Auto-refresh after 60 seconds for live content refresh
-    setTimeout(() => {
-      window.location.reload();
-    }, 60000);
-
-  })();
-</script>
-</body>
-</html>`;
+  return cachedHtml
+    .replace('${liveCards}', liveCards)
+    .replace('${upCards}', upCards)
+    .replace('${completedCards}', completedCards)
+    .replace('${notificationItems}', notificationItems)
+    .replace('${batchOptions}', batchOptions)
+    .replace(/\${new Date\(\)\.getFullYear\(\)}/g, new Date().getFullYear());
 };
 
 /**
- * Cache Update Logic
+ * Update cache periodically
  */
 const updateCache = async () => {
   console.log('Updating cache...');
@@ -631,7 +705,6 @@ const updateCache = async () => {
       fetchApiData('Live/?get=completed'),
       fetchApiData('Live/?get=notifications')
     ]);
-
     cachedHtml = buildFullHtmlPage(live, up, completed, notifications);
     console.log('Cache updated successfully.');
   } catch (error) {
@@ -639,15 +712,13 @@ const updateCache = async () => {
   }
 };
 
-/**
- * Server Setup
- */
+// Express setup
 app.get('/', (req, res) => {
   res.send(cachedHtml);
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
   updateCache();
-  setInterval(updateCache, 60000); // 60 seconds
+  setInterval(updateCache, 60000); // Refresh cache every minute
 });
